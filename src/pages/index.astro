@@ -1,0 +1,175 @@
+---
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Hand Tracking Interaction</title>
+		<style>
+			body {
+				margin: 0;
+				overflow: hidden;
+				font-family: system-ui, sans-serif;
+				background: #111;
+				color: white;
+			}
+			#app {
+				position: relative;
+				width: 100vw;
+				height: 100vh;
+			}
+			video {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				transform: scaleX(-1);
+				opacity: 0.3;
+			}
+			#interaction-layer {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				z-index: 10;
+			}
+			.draggable {
+				width: 100px;
+				height: 100px;
+				border-radius: 12px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-weight: bold;
+				user-select: none;
+				transition: transform 0.1s, box-shadow 0.1s;
+				box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+			}
+			.draggable.active {
+				transform: scale(1.1);
+				box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+			}
+			#box1 { background: #ff4757; top: 200px; left: 200px; }
+			#box2 { background: #2ed573; top: 200px; left: 400px; }
+			#box3 { background: #1e90ff; top: 400px; left: 300px; }
+
+			#cursor {
+				position: absolute;
+				width: 20px;
+				height: 20px;
+				background: white;
+				border: 2px solid black;
+				border-radius: 50%;
+				pointer-events: none;
+				z-index: 100;
+				transform: translate(-50%, -50%);
+				display: none;
+			}
+			#cursor.pinching {
+				background: #ffec33;
+				transform: translate(-50%, -50%) scale(1.5);
+			}
+			#status {
+				position: absolute;
+				bottom: 20px;
+				left: 20px;
+				background: rgba(0,0,0,0.7);
+				padding: 10px 20px;
+				border-radius: 20px;
+				z-index: 100;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+			<video id="webcam" autoplay playsinline></video>
+			<div id="interaction-layer">
+				<div id="box1" class="draggable">Red</div>
+				<div id="box2" class="draggable">Green</div>
+				<div id="box3" class="draggable">Blue</div>
+			</div>
+			<div id="cursor"></div>
+			<div id="status">Initializing Handpose...</div>
+		</div>
+
+		<script>
+			import { HandTracker } from '../scripts/handTracker.js';
+			import { DragManager } from '../scripts/dragManager.js';
+
+			const video = document.getElementById('webcam');
+			const status = document.getElementById('status');
+			const cursor = document.getElementById('cursor');
+			const dragManager = new DragManager();
+
+			// Register draggables
+			document.querySelectorAll('.draggable').forEach(el => {
+				dragManager.register(el);
+			});
+
+			async function setupWebcam() {
+				const stream = await navigator.mediaDevices.getUserMedia({ 
+					video: { width: 640, height: 480 } 
+				});
+				video.srcObject = stream;
+				return new Promise((resolve) => {
+					video.onloadedmetadata = () => resolve(video);
+				});
+			}
+
+			async function init() {
+				console.log('Initializing application...');
+				try {
+					console.log('Setting up webcam...');
+					await setupWebcam();
+					console.log('Webcam ready.');
+					
+					status.innerText = 'Loading Handpose Model...';
+					console.log('Loading handpose model...');
+					
+					const tracker = new HandTracker(video, {
+						onPinchStart: (pos) => {
+							console.log('Pinch started at:', pos);
+							dragManager.handlePinchStart(pos);
+							cursor.classList.add('pinching');
+						},
+						onPinchEnd: () => {
+							console.log('Pinch ended');
+							dragManager.handlePinchEnd();
+							cursor.classList.remove('pinching');
+						},
+						onUpdate: (data) => {
+							const videoWidth = video.videoWidth;
+							const videoHeight = video.videoHeight;
+							const screenWidth = window.innerWidth;
+							const screenHeight = window.innerHeight;
+
+							const x = (1 - (data.position[0] / videoWidth)) * screenWidth;
+							const y = (data.position[1] / videoHeight) * screenHeight;
+
+							cursor.style.display = 'block';
+							cursor.style.left = `${x}px`;
+							cursor.style.top = `${y}px`;
+
+							dragManager.updatePosition([x, y]);
+						}
+					});
+
+					await tracker.init();
+					console.log('HandTracker initialized successfully.');
+					status.innerText = 'Hand Tracking Ready! Pinch to drag objects.';
+				} catch (err) {
+					console.error('Initialization error:', err);
+					status.innerText = 'Error: ' + err.message;
+				}
+			}
+
+			init();
+		</script>
+	</body>
+</html>
