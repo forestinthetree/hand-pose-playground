@@ -31,6 +31,17 @@
 				transform: scaleX(-1);
 				opacity: 0.3;
 			}
+			#hand-canvas {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				transform: scaleX(-1);
+				z-index: 4;
+				pointer-events: none;
+			}
 			#interaction-layer {
 				position: absolute;
 				top: 0;
@@ -119,6 +130,7 @@
 				<h2>Paused</h2>
 				<p>Click anywhere to resume</p>
 			</div>
+			<canvas id="hand-canvas"></canvas>
 			<video id="webcam" autoplay playsinline></video>
 			<div id="interaction-layer">
 				<div id="box1" class="draggable">Red</div>
@@ -135,6 +147,8 @@
 			import '../components/fps-monitor.js';
 
 			const video = document.getElementById('webcam');
+			const canvas = document.getElementById('hand-canvas');
+			const ctx = canvas.getContext('2d');
 			const status = document.getElementById('status');
 			const cursor = document.getElementById('cursor');
 			const pausedOverlay = document.getElementById('paused-overlay');
@@ -157,42 +171,59 @@
 			}
 
 			async function init() {
-				console.log('Initializing application...');
 				try {
-					console.log('Setting up webcam...');
 					await setupWebcam();
-					console.log('Webcam ready.');
-					
-					status.innerText = 'Loading Handpose Model...';
-					console.log('Loading handpose model...');
+					status.innerText = 'Loading Model...';
 					
 					let currentScreenPos = [0, 0];
 					let smoothedPos = [0, 0];
 					const lerp = (start, end, factor) => start + (end - start) * factor;
-					const SMOOTHING_FACTOR = 0.2; // Lower = smoother but more "weight", Higher = more responsive but jittery
+					const SMOOTHING_FACTOR = 0.2;
+
+					const drawHand = (landmarks, isPinching) => {
+						ctx.clearRect(0, 0, canvas.width, canvas.height);
+						if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+							canvas.width = video.videoWidth;
+							canvas.height = video.videoHeight;
+						}
+
+						ctx.strokeStyle = isPinching ? '#ffec33' : '#2ed573';
+						ctx.lineWidth = 3;
+						ctx.fillStyle = isPinching ? '#ffec33' : '#2ed573';
+
+						const fingerIndices = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
+						fingerIndices.forEach(finger => {
+							ctx.beginPath();
+							ctx.moveTo(landmarks[finger[0]][0], landmarks[finger[0]][1]);
+							for (let i = 1; i < finger.length; i++) ctx.lineTo(landmarks[finger[i]][0], landmarks[finger[i]][1]);
+							ctx.stroke();
+						});
+
+						landmarks.forEach(point => {
+							ctx.beginPath(); ctx.arc(point[0], point[1], 4, 0, Math.PI * 2); ctx.fill();
+						});
+					};
 
 					tracker = new HandTracker(video, {
 						onPinchStart: () => {
-							console.log('Pinch started at:', currentScreenPos);
 							dragManager.handlePinchStart(currentScreenPos);
 							cursor.classList.add('pinching');
 						},
 						onPinchEnd: () => {
-							console.log('Pinch ended');
 							dragManager.handlePinchEnd();
 							cursor.classList.remove('pinching');
 						},
 						onUpdate: (data) => {
+							drawHand(data.landmarks, data.isPinching);
+
 							const videoWidth = video.videoWidth;
 							const videoHeight = video.videoHeight;
 							const screenWidth = window.innerWidth;
 							const screenHeight = window.innerHeight;
 
-							// Raw target coordinates
 							const targetX = (1 - (data.position[0] / videoWidth)) * screenWidth;
 							const targetY = (data.position[1] / videoHeight) * screenHeight;
 							
-							// Apply Smoothing (Linear Interpolation)
 							if (smoothedPos[0] === 0 && smoothedPos[1] === 0) {
 								smoothedPos = [targetX, targetY];
 							} else {
@@ -201,44 +232,24 @@
 							}
 
 							currentScreenPos = [...smoothedPos];
-
 							cursor.style.display = 'block';
 							cursor.style.left = `${currentScreenPos[0]}px`;
 							cursor.style.top = `${currentScreenPos[1]}px`;
-
 							dragManager.updatePosition(currentScreenPos);
 						}
 					});
 
 					await tracker.init();
-					console.log('HandTracker initialized successfully.');
-					status.innerText = 'Hand Tracking Ready! Pinch to drag objects.';
+					status.innerText = 'Hand Tracking Ready!';
 
-					// Setup Pause/Resume listeners
-					const handleVisibilityChange = () => {
-						if (document.hidden) {
-							pauseApp();
-						}
-					};
+					const pauseApp = () => { if (tracker) tracker.pause(); pausedOverlay.style.display = 'flex'; cursor.style.display = 'none'; };
+					const resumeApp = () => { if (tracker) tracker.resume(); pausedOverlay.style.display = 'none'; };
 
-					const pauseApp = () => {
-						if (tracker) tracker.pause();
-						pausedOverlay.style.display = 'flex';
-						cursor.style.display = 'none';
-					};
-
-					const resumeApp = () => {
-						if (tracker) tracker.resume();
-						pausedOverlay.style.display = 'none';
-					};
-
-					document.addEventListener('visibilitychange', handleVisibilityChange);
 					window.addEventListener('blur', pauseApp);
 					window.addEventListener('focus', resumeApp);
 					pausedOverlay.addEventListener('click', resumeApp);
-
 				} catch (err) {
-					console.error('Initialization error:', err);
+					console.error(err);
 					status.innerText = 'Error: ' + err.message;
 				}
 			}

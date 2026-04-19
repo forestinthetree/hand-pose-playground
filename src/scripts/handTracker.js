@@ -8,11 +8,13 @@ export class HandTracker {
     this.isPinching = false;
     this.pinchThreshold = options.pinchThreshold || 30;
     this.pinchFrames = 0;
-    this.requiredPinchFrames = 3; // Must be pinching for 3 frames to trigger
+    this.requiredPinchFrames = 3; 
     this.onUpdate = options.onUpdate || (() => {});
     this.onPinchStart = options.onPinchStart || (() => {});
     this.onPinchEnd = options.onPinchEnd || (() => {});
     this.paused = false;
+    this.lastRawPosition = null;
+    this.internalSmoothing = 0.4;
   }
 
   async init() {
@@ -24,13 +26,11 @@ export class HandTracker {
 
   pause() {
     this.paused = true;
-    console.log("Hand tracking paused");
   }
 
   resume() {
     if (this.paused) {
       this.paused = false;
-      console.log("Hand tracking resumed");
       this.track();
     }
   }
@@ -63,6 +63,14 @@ export class HandTracker {
           (thumbTip[1] + indexTip[1]) / 2
         ];
 
+        // Apply internal smoothing
+        if (!this.lastRawPosition) {
+          this.lastRawPosition = center;
+        } else {
+          this.lastRawPosition[0] += (center[0] - this.lastRawPosition[0]) * this.internalSmoothing;
+          this.lastRawPosition[1] += (center[1] - this.lastRawPosition[1]) * this.internalSmoothing;
+        }
+
         const currentlyPinching = distance < this.pinchThreshold;
 
         if (currentlyPinching) {
@@ -73,14 +81,14 @@ export class HandTracker {
 
         if (this.pinchFrames >= this.requiredPinchFrames && !this.isPinching) {
           this.isPinching = true;
-          this.onPinchStart(center);
+          this.onPinchStart(this.lastRawPosition);
         } else if (this.pinchFrames === 0 && this.isPinching) {
           this.isPinching = false;
-          this.onPinchEnd(center);
+          this.onPinchEnd(this.lastRawPosition);
         }
 
         this.onUpdate({
-          position: center,
+          position: [...this.lastRawPosition],
           isPinching: this.isPinching,
           landmarks: landmarks
         });
