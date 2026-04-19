@@ -2,6 +2,7 @@ export class DragManager {
   constructor() {
     this.draggables = [];
     this.draggedElement = null;
+    this.hoveredElement = null;
     this.offset = { x: 0, y: 0 };
   }
 
@@ -15,17 +16,15 @@ export class DragManager {
     const x = position[0];
     const y = position[1];
 
-    // Check if we hit any draggable element
-    // Note: We need to scale these coordinates if the video is scaled or offset
-    // For simplicity, we assume the hand coordinates map directly to viewport or relative container
     for (const el of this.draggables) {
       const rect = el.getBoundingClientRect();
       if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
         this.draggedElement = el;
         this.offset.x = x - rect.left;
         this.offset.y = y - rect.top;
-        el.style.cursor = 'grabbing';
-        el.classList.add('active');
+        el.classList.add('dragging');
+        el.style.zIndex = '1000'; // Bring to front while dragging
+        console.log('Started dragging:', el.id);
         break;
       }
     }
@@ -33,18 +32,39 @@ export class DragManager {
 
   handlePinchEnd() {
     if (this.draggedElement) {
-      this.draggedElement.style.cursor = 'grab';
-      this.draggedElement.classList.remove('active');
+      this.draggedElement.classList.remove('dragging');
+      this.draggedElement.style.zIndex = '10';
       this.draggedElement = null;
+      console.log('Stopped dragging');
     }
   }
 
   updatePosition(position) {
+    const x = position[0];
+    const y = position[1];
+
+    // Handle Hover state
+    let foundHover = null;
+    for (const el of this.draggables) {
+      const rect = el.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        foundHover = el;
+        break;
+      }
+    }
+
+    if (this.hoveredElement !== foundHover) {
+      if (this.hoveredElement) this.hoveredElement.classList.remove('hover');
+      this.hoveredElement = foundHover;
+      if (this.hoveredElement) this.hoveredElement.classList.add('hover');
+    }
+
+    // Handle Dragging
     if (this.draggedElement) {
-      const x = position[0] - this.offset.x;
-      const y = position[1] - this.offset.y;
-      this.draggedElement.style.left = `${x}px`;
-      this.draggedElement.style.top = `${y}px`;
+      const targetX = x - this.offset.x;
+      const targetY = y - this.offset.y;
+      this.draggedElement.style.left = `${targetX}px`;
+      this.draggedElement.style.top = `${targetY}px`;
     }
   }
 }

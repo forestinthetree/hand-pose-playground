@@ -40,20 +40,28 @@
 				z-index: 10;
 			}
 			.draggable {
-				width: 100px;
-				height: 100px;
-				border-radius: 12px;
+				width: 120px;
+				height: 120px;
+				border-radius: 16px;
 				display: flex;
 				align-items: center;
 				justify-content: center;
 				font-weight: bold;
 				user-select: none;
-				transition: transform 0.1s, box-shadow 0.1s;
+				transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease, background-color 0.3s ease;
 				box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+				border: 2px solid rgba(255, 255, 255, 0.1);
 			}
-			.draggable.active {
-				transform: scale(1.1);
-				box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+			.draggable.hover {
+				transform: scale(1.05);
+				border-color: rgba(255, 255, 255, 0.5);
+				box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+			}
+			.draggable.dragging {
+				transform: scale(1.15);
+				box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+				border-color: white;
+				filter: brightness(1.2);
 			}
 			#box1 { background: #ff4757; top: 200px; left: 200px; }
 			#box2 { background: #2ed573; top: 200px; left: 400px; }
