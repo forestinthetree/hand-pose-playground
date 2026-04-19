@@ -96,6 +96,7 @@
 	</head>
 	<body>
 		<div id="app">
+			<fps-monitor style="position: absolute; top: 20px; right: 20px; z-index: 1000;"></fps-monitor>
 			<video id="webcam" autoplay playsinline></video>
 			<div id="interaction-layer">
 				<div id="box1" class="draggable">Red</div>
@@ -109,6 +110,7 @@
 		<script>
 			import { HandTracker } from '../scripts/handTracker.js';
 			import { DragManager } from '../scripts/dragManager.js';
+			import '../components/fps-monitor.js';
 
 			const video = document.getElementById('webcam');
 			const status = document.getElementById('status');
