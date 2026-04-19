@@ -140,10 +140,12 @@
 					status.innerText = 'Loading Handpose Model...';
 					console.log('Loading handpose model...');
 					
+					let currentScreenPos = [0, 0];
+
 					const tracker = new HandTracker(video, {
-						onPinchStart: (pos) => {
-							console.log('Pinch started at:', pos);
-							dragManager.handlePinchStart(pos);
+						onPinchStart: () => {
+							console.log('Pinch started at:', currentScreenPos);
+							dragManager.handlePinchStart(currentScreenPos);
 							cursor.classList.add('pinching');
 						},
 						onPinchEnd: () => {
@@ -159,12 +161,14 @@
 
 							const x = (1 - (data.position[0] / videoWidth)) * screenWidth;
 							const y = (data.position[1] / videoHeight) * screenHeight;
+							
+							currentScreenPos = [x, y];
 
 							cursor.style.display = 'block';
 							cursor.style.left = `${x}px`;
 							cursor.style.top = `${y}px`;
 
-							dragManager.updatePosition([x, y]);
+							dragManager.updatePosition(currentScreenPos);
 						}
 					});
 

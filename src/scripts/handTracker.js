@@ -7,6 +7,8 @@ export class HandTracker {
     this.model = null;
     this.isPinching = false;
     this.pinchThreshold = options.pinchThreshold || 30;
+    this.pinchFrames = 0;
+    this.requiredPinchFrames = 3; // Must be pinching for 3 frames to trigger
     this.onUpdate = options.onUpdate || (() => {});
     this.onPinchStart = options.onPinchStart || (() => {});
     this.onPinchEnd = options.onPinchEnd || (() => {});
@@ -32,7 +34,6 @@ export class HandTracker {
         const hand = predictions[0];
         const landmarks = hand.landmarks;
 
-        // Landmarks: 4 is thumb tip, 8 is index finger tip
         const thumbTip = landmarks[4];
         const indexTip = landmarks[8];
 
@@ -48,10 +49,16 @@ export class HandTracker {
 
         const currentlyPinching = distance < this.pinchThreshold;
 
-        if (currentlyPinching && !this.isPinching) {
+        if (currentlyPinching) {
+          this.pinchFrames = Math.min(this.pinchFrames + 1, 10);
+        } else {
+          this.pinchFrames = Math.max(this.pinchFrames - 1, 0);
+        }
+
+        if (this.pinchFrames >= this.requiredPinchFrames && !this.isPinching) {
           this.isPinching = true;
           this.onPinchStart(center);
-        } else if (!currentlyPinching && this.isPinching) {
+        } else if (this.pinchFrames === 0 && this.isPinching) {
           this.isPinching = false;
           this.onPinchEnd(center);
         }
