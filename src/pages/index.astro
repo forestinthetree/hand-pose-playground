@@ -167,6 +167,9 @@
 					console.log('Loading handpose model...');
 					
 					let currentScreenPos = [0, 0];
+					let smoothedPos = [0, 0];
+					const lerp = (start, end, factor) => start + (end - start) * factor;
+					const SMOOTHING_FACTOR = 0.2; // Lower = smoother but more "weight", Higher = more responsive but jittery
 
 					tracker = new HandTracker(video, {
 						onPinchStart: () => {
@@ -185,14 +188,23 @@
 							const screenWidth = window.innerWidth;
 							const screenHeight = window.innerHeight;
 
-							const x = (1 - (data.position[0] / videoWidth)) * screenWidth;
-							const y = (data.position[1] / videoHeight) * screenHeight;
+							// Raw target coordinates
+							const targetX = (1 - (data.position[0] / videoWidth)) * screenWidth;
+							const targetY = (data.position[1] / videoHeight) * screenHeight;
 							
-							currentScreenPos = [x, y];
+							// Apply Smoothing (Linear Interpolation)
+							if (smoothedPos[0] === 0 && smoothedPos[1] === 0) {
+								smoothedPos = [targetX, targetY];
+							} else {
+								smoothedPos[0] = lerp(smoothedPos[0], targetX, SMOOTHING_FACTOR);
+								smoothedPos[1] = lerp(smoothedPos[1], targetY, SMOOTHING_FACTOR);
+							}
+
+							currentScreenPos = [...smoothedPos];
 
 							cursor.style.display = 'block';
-							cursor.style.left = `${x}px`;
-							cursor.style.top = `${y}px`;
+							cursor.style.left = `${currentScreenPos[0]}px`;
+							cursor.style.top = `${currentScreenPos[1]}px`;
 
 							dragManager.updatePosition(currentScreenPos);
 						}
