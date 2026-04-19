@@ -92,11 +92,33 @@
 				border-radius: 20px;
 				z-index: 100;
 			}
+			#paused-overlay {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0,0,0,0.8);
+				display: none;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				z-index: 2000;
+				backdrop-filter: blur(5px);
+			}
+			#paused-overlay h2 {
+				font-size: 3rem;
+				margin-bottom: 1rem;
+			}
 		</style>
 	</head>
 	<body>
 		<div id="app">
 			<fps-monitor style="position: absolute; top: 20px; right: 20px; z-index: 1000;"></fps-monitor>
+			<div id="paused-overlay">
+				<h2>Paused</h2>
+				<p>Click anywhere to resume</p>
+			</div>
 			<video id="webcam" autoplay playsinline></video>
 			<div id="interaction-layer">
 				<div id="box1" class="draggable">Red</div>
@@ -115,7 +137,9 @@
 			const video = document.getElementById('webcam');
 			const status = document.getElementById('status');
 			const cursor = document.getElementById('cursor');
+			const pausedOverlay = document.getElementById('paused-overlay');
 			const dragManager = new DragManager();
+			let tracker = null;
 
 			// Register draggables
 			document.querySelectorAll('.draggable').forEach(el => {
@@ -144,7 +168,7 @@
 					
 					let currentScreenPos = [0, 0];
 
-					const tracker = new HandTracker(video, {
+					tracker = new HandTracker(video, {
 						onPinchStart: () => {
 							console.log('Pinch started at:', currentScreenPos);
 							dragManager.handlePinchStart(currentScreenPos);
@@ -177,6 +201,30 @@
 					await tracker.init();
 					console.log('HandTracker initialized successfully.');
 					status.innerText = 'Hand Tracking Ready! Pinch to drag objects.';
+
+					// Setup Pause/Resume listeners
+					const handleVisibilityChange = () => {
+						if (document.hidden) {
+							pauseApp();
+						}
+					};
+
+					const pauseApp = () => {
+						if (tracker) tracker.pause();
+						pausedOverlay.style.display = 'flex';
+						cursor.style.display = 'none';
+					};
+
+					const resumeApp = () => {
+						if (tracker) tracker.resume();
+						pausedOverlay.style.display = 'none';
+					};
+
+					document.addEventListener('visibilitychange', handleVisibilityChange);
+					window.addEventListener('blur', pauseApp);
+					window.addEventListener('focus', resumeApp);
+					pausedOverlay.addEventListener('click', resumeApp);
+
 				} catch (err) {
 					console.error('Initialization error:', err);
 					status.innerText = 'Error: ' + err.message;

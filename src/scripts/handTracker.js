@@ -12,6 +12,7 @@ export class HandTracker {
     this.onUpdate = options.onUpdate || (() => {});
     this.onPinchStart = options.onPinchStart || (() => {});
     this.onPinchEnd = options.onPinchEnd || (() => {});
+    this.paused = false;
   }
 
   async init() {
@@ -21,7 +22,22 @@ export class HandTracker {
     this.track();
   }
 
+  pause() {
+    this.paused = true;
+    console.log("Hand tracking paused");
+  }
+
+  resume() {
+    if (this.paused) {
+      this.paused = false;
+      console.log("Hand tracking resumed");
+      this.track();
+    }
+  }
+
   async track() {
+    if (this.paused) return;
+
     try {
       if (this.video.readyState < 2) {
         requestAnimationFrame(() => this.track());
