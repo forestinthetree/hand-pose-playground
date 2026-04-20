@@ -38,7 +38,13 @@ document.querySelectorAll('.draggable').forEach(el => {
 
 // Sidebar toggle
 debugToggle.addEventListener('click', () => {
-  debugSidebar.classList.toggle('hidden');
+  const isToggled = debugSidebar.classList.toggle('hidden');
+
+  if (isToggled) {
+    debugToggle.innerText = 'Debug';
+  } else {
+    debugToggle.innerText = 'Close';
+  }
 });
 
 async function setupWebcam() {
