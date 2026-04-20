@@ -9,6 +9,9 @@
 		<meta name="generator" content={Astro.generator} />
 		<title>Hand Tracking Interaction</title>
 		<style>
+			:root {
+				--video-blur: 30px; /* Adjust this to control video blurriness */
+			}
 			body {
 				margin: 0;
 				overflow: hidden;
@@ -30,6 +33,7 @@
 				object-fit: cover;
 				transform: scaleX(-1);
 				opacity: 0.3;
+				filter: blur(var(--video-blur));
 			}
 			#hand-canvas {
 				position: absolute;
