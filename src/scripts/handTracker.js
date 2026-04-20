@@ -13,6 +13,10 @@ export class HandTracker {
     this.paused = false;
     this.lastRawPosition = null;
     this.internalSmoothing = 0.4;
+
+    // Grace period for lost tracking
+    this.lostHandCount = 0;
+    this.lostHandThreshold = options.lostHandThreshold || 7; // ~7 frames grace (~200ms at 30fps)
   }
 
   async init() {
@@ -45,6 +49,7 @@ export class HandTracker {
       const predictions = await this.model.estimateHands(this.video);
       
       if (predictions.length > 0) {
+        this.lostHandCount = 0; // Reset grace counter
         const hand = predictions[0];
         const landmarks = hand.landmarks;
 
@@ -87,14 +92,20 @@ export class HandTracker {
           gestureData: gestureState
         });
       } else {
-        // --- Hand Lost ---
-        if (this.gesture) this.gesture.reset();
-        this.lastRawPosition = null;
-        this.onUpdate({
-          position: null,
-          isPinching: false,
-          landmarks: null
-        });
+        // --- Hand Lost (with grace period) ---
+        this.lostHandCount++;
+        
+        if (this.lostHandCount >= this.lostHandThreshold) {
+          if (this.gesture) this.gesture.reset();
+          this.lastRawPosition = null;
+          this.onUpdate({
+            position: null,
+            isPinching: false,
+            landmarks: null
+          });
+        }
+        // If within grace period, we just skip the update, 
+        // effectively "freezing" the last known state.
       }
     } catch (error) {
       console.error("Hand tracking error:", error);
