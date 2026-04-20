@@ -13,6 +13,13 @@ import '../styles/main.css';
 	<body>
 		<div id="app">
 			<fps-monitor style="position: absolute; top: 20px; right: 20px; z-index: 1000;"></fps-monitor>
+			<div id="gesture-selector">
+				<label for="gesture-type">Gesture:</label>
+				<select id="gesture-type">
+					<option value="pinch">Pinch</option>
+					<option value="finger-curve">Finger Curve</option>
+				</select>
+			</div>
 			<div id="paused-overlay">
 				<h2>Paused</h2>
 				<p>Click anywhere to resume</p>

@@ -1,6 +1,7 @@
 import { HandTracker } from './handTracker.js';
 import { DragManager } from './dragManager.js';
 import { PinchGesture } from './gestures/pinchGesture.js';
+import { FingerCurveGesture } from './gestures/fingerCurveGesture.js';
 import '../components/fps-monitor.js';
 
 // --- Configuration Constants ---
@@ -17,6 +18,7 @@ const ctx = canvas.getContext('2d');
 const status = document.getElementById('status');
 const cursor = document.getElementById('cursor');
 const pausedOverlay = document.getElementById('paused-overlay');
+const gestureSelect = document.getElementById('gesture-type');
 const dragManager = new DragManager();
 let tracker = null;
 
@@ -45,7 +47,7 @@ export async function init() {
     const lerp = (start, end, factor) => start + (end - start) * factor;
 
     // --- Gesture Plugin Setup ---
-    const gesturePlugin = new PinchGesture({
+    const gestureCallbacks = {
       onStart: () => {
         dragManager.handlePinchStart(currentScreenPos);
         cursor.classList.add('pinching');
@@ -53,6 +55,20 @@ export async function init() {
       onEnd: () => {
         dragManager.handlePinchEnd();
         cursor.classList.remove('pinching');
+      }
+    };
+
+    const gestures = {
+      pinch: new PinchGesture(gestureCallbacks),
+      'finger-curve': new FingerCurveGesture(gestureCallbacks)
+    };
+
+    const initialGesture = gestures[gestureSelect.value] || gestures.pinch;
+
+    gestureSelect.addEventListener('change', (e) => {
+      if (tracker) {
+        if (tracker.gesture) tracker.gesture.reset();
+        tracker.gesture = gestures[e.target.value];
       }
     });
 
@@ -84,7 +100,7 @@ export async function init() {
     };
 
     tracker = new HandTracker(video, {
-      gesture: gesturePlugin,
+      gesture: initialGesture,
       onUpdate: (data) => {
         if (!data.landmarks) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
