@@ -150,6 +150,14 @@
 			import { DragManager } from '../scripts/dragManager.js';
 			import '../components/fps-monitor.js';
 
+			// --- Configuration Constants ---
+			const SMOOTHING_FACTOR = 0.2;
+			const HAND_TRACK_OPACITY = 0.3;
+			const HAND_PINCH_OPACITY = 0.3;
+			const HAND_LINE_WIDTH = 4;
+			const HAND_POINT_RADIUS = 5;
+			// -------------------------------
+
 			const video = document.getElementById('webcam');
 			const canvas = document.getElementById('hand-canvas');
 			const ctx = canvas.getContext('2d');
@@ -182,7 +190,6 @@
 					let currentScreenPos = [0, 0];
 					let smoothedPos = [0, 0];
 					const lerp = (start, end, factor) => start + (end - start) * factor;
-					const SMOOTHING_FACTOR = 0.2;
 
 					const drawHand = (landmarks, isPinching) => {
 						ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -191,9 +198,12 @@
 							canvas.height = video.videoHeight;
 						}
 
-						ctx.strokeStyle = isPinching ? '#ffec33' : '#2ed573';
-						ctx.lineWidth = 3;
-						ctx.fillStyle = isPinching ? '#ffec33' : '#2ed573';
+						const alpha = isPinching ? HAND_PINCH_OPACITY : HAND_TRACK_OPACITY;
+						const color = isPinching ? `rgba(255, 236, 51, ${alpha})` : `rgba(46, 213, 115, ${alpha})`;
+						
+						ctx.strokeStyle = color;
+						ctx.lineWidth = HAND_LINE_WIDTH;
+						ctx.fillStyle = color;
 
 						const fingerIndices = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
 						fingerIndices.forEach(finger => {
@@ -204,7 +214,7 @@
 						});
 
 						landmarks.forEach(point => {
-							ctx.beginPath(); ctx.arc(point[0], point[1], 4, 0, Math.PI * 2); ctx.fill();
+							ctx.beginPath(); ctx.arc(point[0], point[1], HAND_POINT_RADIUS, 0, Math.PI * 2); ctx.fill();
 						});
 					};
 
