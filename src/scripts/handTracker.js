@@ -8,11 +8,9 @@ export class HandTracker {
     this.isPinching = false;
     
     // Relative thresholds (ratios of the hand scale)
-    // Hand scale is measured from Wrist (0) to Middle MCP (9)
-    this.pinchStartRatio = options.pinchStartRatio || 0.35; // Start when distance < 35% of hand scale
-    this.pinchStopRatio = options.pinchStopRatio || 0.6;    // Stop when distance > 80% of hand scale
+    this.pinchStartRatio = options.pinchStartRatio || 0.35; 
+    this.pinchStopRatio = options.pinchStopRatio || 0.75;    
     
-    this.pinchFrames = 0;
     this.requiredPinchFrames = 2; 
     this.onUpdate = options.onUpdate || (() => {});
     this.onPinchStart = options.onPinchStart || (() => {});
@@ -20,6 +18,10 @@ export class HandTracker {
     this.paused = false;
     this.lastRawPosition = null;
     this.internalSmoothing = 0.4;
+
+    // Tracking for squeeze pulses
+    this.prevPinchRatio = 1.0;
+    this.wasPinchingDeep = false;
   }
 
   async init() {
@@ -86,23 +88,29 @@ export class HandTracker {
           this.lastRawPosition[1] += (center[1] - this.lastRawPosition[1]) * this.internalSmoothing;
         }
 
-        // State-based threshold check (Relative Hysteresis)
-        const threshold = this.isPinching ? this.pinchStopRatio : this.pinchStartRatio;
-        const currentlyPinching = pinchRatio < threshold;
+        // --- Gesture State Logic ---
 
-        if (currentlyPinching) {
-          this.pinchFrames = Math.min(this.pinchFrames + 1, 10);
-        } else {
-          this.pinchFrames = Math.max(this.pinchFrames - 1, 0);
+        // 1. Dynamic Squeeze Detection
+        // Trigger if we see a clear reduction in distance (squeeze pulse)
+        // or if we are below the absolute start threshold.
+        const squeezeDelta = this.prevPinchRatio - pinchRatio;
+        const isSqueezing = squeezeDelta > 0.008; // intentional squeeze motion
+        const isBelowStart = pinchRatio < this.pinchStartRatio;
+
+        if (isSqueezing || isBelowStart) {
+          // Fire start event - DragManager will ignore if already dragging
+          this.onPinchStart(this.lastRawPosition);
+          this.isPinching = true;
+          this.wasPinchingDeep = true;
         }
 
-        if (this.pinchFrames >= this.requiredPinchFrames && !this.isPinching) {
-          this.isPinching = true;
-          this.onPinchStart(this.lastRawPosition);
-        } else if (this.pinchFrames === 0 && this.isPinching) {
+        // 2. Check for Release (Exiting holding state)
+        if (this.isPinching && pinchRatio > this.pinchStopRatio) {
           this.isPinching = false;
           this.onPinchEnd(this.lastRawPosition);
         }
+
+        this.prevPinchRatio = pinchRatio;
 
         this.onUpdate({
           position: [...this.lastRawPosition],
