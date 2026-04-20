@@ -23,7 +23,7 @@ export class DragManager {
     const x = position[0];
     const y = position[1];
 
-    if (this.state === States.HOVER && this.hoveredElement) {
+    if ((this.state === States.HOVER || this.state === States.IDLE) && this.hoveredElement) {
       const rect = this.hoveredElement.getBoundingClientRect();
       this.draggedElement = this.hoveredElement;
       this.offset.x = x - rect.left;
@@ -39,11 +39,11 @@ export class DragManager {
       this.draggedElement.classList.remove('dragging');
       this.draggedElement.style.zIndex = '10';
       this.draggedElement = null;
-      this.state = States.IDLE; // Re-evaluate state on next update
+      this.state = States.IDLE;
     }
   }
 
-  updatePosition(position) {
+  updatePosition(position, isPinching = false) {
     const x = position[0];
     const y = position[1];
 
@@ -58,15 +58,23 @@ export class DragManager {
         }
       }
 
+      // Update hovered element and classes
       if (this.hoveredElement !== foundHover) {
         if (this.hoveredElement) this.hoveredElement.classList.remove('hover');
         this.hoveredElement = foundHover;
-        if (this.hoveredElement) {
-          this.hoveredElement.classList.add('hover');
-          this.state = States.HOVER;
-        } else {
-          this.state = States.IDLE;
-        }
+        if (this.hoveredElement) this.hoveredElement.classList.add('hover');
+      }
+
+      // Update state based on current findings
+      if (this.hoveredElement) {
+        this.state = States.HOVER;
+      } else {
+        this.state = States.IDLE;
+      }
+
+      // If pinching and we have a target, start dragging
+      if (isPinching && this.hoveredElement) {
+        this.handlePinchStart(position);
       }
     } else {
       // Currently dragging

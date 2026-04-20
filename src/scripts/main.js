@@ -155,7 +155,7 @@ export async function init() {
         cursor.style.display = 'block';
         cursor.style.left = `${currentScreenPos[0]}px`;
         cursor.style.top = `${currentScreenPos[1]}px`;
-        const dragInfo = dragManager.updatePosition(currentScreenPos);
+        const dragInfo = dragManager.updatePosition(currentScreenPos, data.isPinching);
 
         // Update Debug Sidebar
         debugPos.innerText = `X: ${Math.round(data.position[0])}, Y: ${Math.round(data.position[1])}`;
