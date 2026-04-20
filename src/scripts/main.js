@@ -1,5 +1,6 @@
 import { HandTracker } from './handTracker.js';
 import { DragManager } from './dragManager.js';
+import { PinchGesture } from './gestures/pinchGesture.js';
 import '../components/fps-monitor.js';
 
 // --- Configuration Constants ---
@@ -43,6 +44,18 @@ export async function init() {
     let smoothedPos = [0, 0];
     const lerp = (start, end, factor) => start + (end - start) * factor;
 
+    // --- Gesture Plugin Setup ---
+    const gesturePlugin = new PinchGesture({
+      onStart: () => {
+        dragManager.handlePinchStart(currentScreenPos);
+        cursor.classList.add('pinching');
+      },
+      onEnd: () => {
+        dragManager.handlePinchEnd();
+        cursor.classList.remove('pinching');
+      }
+    });
+
     const drawHand = (landmarks, isPinching) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
@@ -71,14 +84,7 @@ export async function init() {
     };
 
     tracker = new HandTracker(video, {
-      onPinchStart: () => {
-        dragManager.handlePinchStart(currentScreenPos);
-        cursor.classList.add('pinching');
-      },
-      onPinchEnd: () => {
-        dragManager.handlePinchEnd();
-        cursor.classList.remove('pinching');
-      },
+      gesture: gesturePlugin,
       onUpdate: (data) => {
         if (!data.landmarks) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);

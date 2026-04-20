@@ -5,23 +5,14 @@ export class HandTracker {
   constructor(videoElement, options = {}) {
     this.video = videoElement;
     this.model = null;
-    this.isPinching = false;
     
-    // Relative thresholds (ratios of the hand scale)
-    this.pinchStartRatio = options.pinchStartRatio || 0.35; 
-    this.pinchStopRatio = options.pinchStopRatio || 0.75;    
+    // Pluggable Gesture Engine
+    this.gesture = options.gesture || null;
     
-    this.requiredPinchFrames = 2; 
     this.onUpdate = options.onUpdate || (() => {});
-    this.onPinchStart = options.onPinchStart || (() => {});
-    this.onPinchEnd = options.onPinchEnd || (() => {});
     this.paused = false;
     this.lastRawPosition = null;
     this.internalSmoothing = 0.4;
-
-    // Tracking for squeeze pulses
-    this.prevPinchRatio = 1.0;
-    this.wasPinchingDeep = false;
   }
 
   async init() {
@@ -57,7 +48,9 @@ export class HandTracker {
         const hand = predictions[0];
         const landmarks = hand.landmarks;
 
-        // Calculate hand scale (Wrist to Middle MCP)
+        // --- Core Tracking Logic ---
+
+        // Calculate metadata (hand scale, etc)
         const wrist = landmarks[0];
         const middleMCP = landmarks[9];
         const handScale = Math.sqrt(
@@ -65,16 +58,9 @@ export class HandTracker {
           Math.pow(wrist[1] - middleMCP[1], 2)
         );
 
+        // Calculate center for cursor
         const thumbTip = landmarks[4];
         const indexTip = landmarks[8];
-
-        const fingerDistance = Math.sqrt(
-          Math.pow(thumbTip[0] - indexTip[0], 2) +
-          Math.pow(thumbTip[1] - indexTip[1], 2)
-        );
-
-        const pinchRatio = fingerDistance / handScale;
-
         const center = [
           (thumbTip[0] + indexTip[0]) / 2,
           (thumbTip[1] + indexTip[1]) / 2
@@ -88,38 +74,21 @@ export class HandTracker {
           this.lastRawPosition[1] += (center[1] - this.lastRawPosition[1]) * this.internalSmoothing;
         }
 
-        // --- Gesture State Logic ---
-
-        // 1. Dynamic Squeeze Detection
-        const squeezeDelta = this.prevPinchRatio - pinchRatio;
-        const isSqueezing = squeezeDelta > 0.008; 
-        const isBelowStart = pinchRatio < this.pinchStartRatio;
-
-        if (isSqueezing || isBelowStart) {
-          this.onPinchStart(this.lastRawPosition);
-          this.isPinching = true;
-          this.wasPinchingDeep = true;
+        // --- Delegate Gesture Detection ---
+        let gestureState = { active: false };
+        if (this.gesture) {
+          gestureState = this.gesture.update(landmarks, { handScale });
         }
-
-        // 2. Check for Release (Exiting holding state)
-        if (this.isPinching && pinchRatio > this.pinchStopRatio) {
-          this.isPinching = false;
-          this.onPinchEnd(this.lastRawPosition);
-        }
-
-        this.prevPinchRatio = pinchRatio;
 
         this.onUpdate({
           position: [...this.lastRawPosition],
-          isPinching: this.isPinching,
-          landmarks: landmarks
+          isPinching: gestureState.active,
+          landmarks: landmarks,
+          gestureData: gestureState
         });
       } else {
         // --- Hand Lost ---
-        if (this.isPinching) {
-          this.isPinching = false;
-          this.onPinchEnd(this.lastRawPosition);
-        }
+        if (this.gesture) this.gesture.reset();
         this.lastRawPosition = null;
         this.onUpdate({
           position: null,
