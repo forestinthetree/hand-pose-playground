@@ -1,9 +1,16 @@
+const States = {
+  IDLE: 'IDLE',
+  HOVER: 'HOVER',
+  DRAGGING: 'DRAGGING'
+};
+
 export class DragManager {
   constructor() {
     this.draggables = [];
     this.draggedElement = null;
     this.hoveredElement = null;
     this.offset = { x: 0, y: 0 };
+    this.state = States.IDLE;
   }
 
   register(element) {
@@ -16,26 +23,25 @@ export class DragManager {
     const x = position[0];
     const y = position[1];
 
-    for (const el of this.draggables) {
-      const rect = el.getBoundingClientRect();
-      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        this.draggedElement = el;
-        this.offset.x = x - rect.left;
-        this.offset.y = y - rect.top;
-        el.classList.add('dragging');
-        el.style.zIndex = '1000'; // Bring to front while dragging
-        console.log('Started dragging:', el.id);
-        break;
-      }
+    if (this.state === States.HOVER && this.hoveredElement) {
+      const rect = this.hoveredElement.getBoundingClientRect();
+      this.draggedElement = this.hoveredElement;
+      this.offset.x = x - rect.left;
+      this.offset.y = y - rect.top;
+      this.draggedElement.classList.add('dragging');
+      this.draggedElement.style.zIndex = '1000';
+      this.state = States.DRAGGING;
+      console.log('State: DRAGGING', this.draggedElement.id);
     }
   }
 
   handlePinchEnd() {
-    if (this.draggedElement) {
+    if (this.state === States.DRAGGING) {
       this.draggedElement.classList.remove('dragging');
       this.draggedElement.style.zIndex = '10';
       this.draggedElement = null;
-      console.log('Stopped dragging');
+      this.state = States.IDLE; // Re-evaluate state on next update
+      console.log('State: IDLE (dropped)');
     }
   }
 
@@ -43,24 +49,29 @@ export class DragManager {
     const x = position[0];
     const y = position[1];
 
-    // Handle Hover state
-    let foundHover = null;
-    for (const el of this.draggables) {
-      const rect = el.getBoundingClientRect();
-      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        foundHover = el;
-        break;
+    if (this.state !== States.DRAGGING) {
+      // Look for hover
+      let foundHover = null;
+      for (const el of this.draggables) {
+        const rect = el.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          foundHover = el;
+          break;
+        }
       }
-    }
 
-    if (this.hoveredElement !== foundHover) {
-      if (this.hoveredElement) this.hoveredElement.classList.remove('hover');
-      this.hoveredElement = foundHover;
-      if (this.hoveredElement) this.hoveredElement.classList.add('hover');
-    }
-
-    // Handle Dragging
-    if (this.draggedElement) {
+      if (this.hoveredElement !== foundHover) {
+        if (this.hoveredElement) this.hoveredElement.classList.remove('hover');
+        this.hoveredElement = foundHover;
+        if (this.hoveredElement) {
+          this.hoveredElement.classList.add('hover');
+          this.state = States.HOVER;
+        } else {
+          this.state = States.IDLE;
+        }
+      }
+    } else {
+      // Currently dragging
       const targetX = x - this.offset.x;
       const targetY = y - this.offset.y;
       this.draggedElement.style.left = `${targetX}px`;

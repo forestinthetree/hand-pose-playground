@@ -6,9 +6,13 @@ export class HandTracker {
     this.video = videoElement;
     this.model = null;
     this.isPinching = false;
-    this.pinchThreshold = options.pinchThreshold || 30;
+    
+    // Hysteresis thresholds
+    this.pinchStartThreshold = options.pinchStartThreshold || 30; // Closer together to start
+    this.pinchStopThreshold = options.pinchStopThreshold || 80;   // Further apart to stop
+    
     this.pinchFrames = 0;
-    this.requiredPinchFrames = 3; 
+    this.requiredPinchFrames = 2; 
     this.onUpdate = options.onUpdate || (() => {});
     this.onPinchStart = options.onPinchStart || (() => {});
     this.onPinchEnd = options.onPinchEnd || (() => {});
@@ -71,7 +75,9 @@ export class HandTracker {
           this.lastRawPosition[1] += (center[1] - this.lastRawPosition[1]) * this.internalSmoothing;
         }
 
-        const currentlyPinching = distance < this.pinchThreshold;
+        // State-based threshold check (Hysteresis)
+        const threshold = this.isPinching ? this.pinchStopThreshold : this.pinchStartThreshold;
+        const currentlyPinching = distance < threshold;
 
         if (currentlyPinching) {
           this.pinchFrames = Math.min(this.pinchFrames + 1, 10);
