@@ -31,7 +31,6 @@ export class DragManager {
       this.draggedElement.classList.add('dragging');
       this.draggedElement.style.zIndex = '1000';
       this.state = States.DRAGGING;
-      console.log('State: DRAGGING', this.draggedElement.id);
     }
   }
 
@@ -41,7 +40,6 @@ export class DragManager {
       this.draggedElement.style.zIndex = '10';
       this.draggedElement = null;
       this.state = States.IDLE; // Re-evaluate state on next update
-      console.log('State: IDLE (dropped)');
     }
   }
 
@@ -77,5 +75,10 @@ export class DragManager {
       this.draggedElement.style.left = `${targetX}px`;
       this.draggedElement.style.top = `${targetY}px`;
     }
+
+    return {
+      state: this.state,
+      target: this.draggedElement?.id || this.hoveredElement?.id || 'None'
+    };
   }
 }

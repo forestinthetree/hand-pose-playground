@@ -19,12 +19,26 @@ const status = document.getElementById('status');
 const cursor = document.getElementById('cursor');
 const pausedOverlay = document.getElementById('paused-overlay');
 const gestureSelect = document.getElementById('gesture-type');
+const debugToggle = document.getElementById('debug-toggle');
+const debugSidebar = document.getElementById('debug-sidebar');
+const debugStatus = document.getElementById('debug-status');
+const debugPos = document.getElementById('debug-pos');
+const debugPinching = document.getElementById('debug-pinching');
+const debugGestureData = document.getElementById('debug-gesture-data');
+const debugDragState = document.getElementById('debug-drag-state');
+const debugDragTarget = document.getElementById('debug-drag-target');
+
 const dragManager = new DragManager();
 let tracker = null;
 
 // Register draggables
 document.querySelectorAll('.draggable').forEach(el => {
   dragManager.register(el);
+});
+
+// Sidebar toggle
+debugToggle.addEventListener('click', () => {
+  debugSidebar.classList.toggle('hidden');
 });
 
 async function setupWebcam() {
@@ -41,6 +55,7 @@ export async function init() {
   try {
     await setupWebcam();
     status.innerText = 'Loading Model...';
+    debugStatus.innerText = 'Loading Model...';
     
     let currentScreenPos = [0, 0];
     let smoothedPos = [0, 0];
@@ -105,6 +120,11 @@ export async function init() {
         if (!data.landmarks) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           cursor.style.display = 'none';
+          debugPos.innerText = 'N/A';
+          debugPinching.innerText = 'No';
+          debugGestureData.innerText = 'N/A';
+          debugDragState.innerText = 'IDLE';
+          debugDragTarget.innerText = 'None';
           return;
         }
 
@@ -129,15 +149,32 @@ export async function init() {
         cursor.style.display = 'block';
         cursor.style.left = `${currentScreenPos[0]}px`;
         cursor.style.top = `${currentScreenPos[1]}px`;
-        dragManager.updatePosition(currentScreenPos);
+        const dragInfo = dragManager.updatePosition(currentScreenPos);
+
+        // Update Debug Sidebar
+        debugPos.innerText = `X: ${Math.round(data.position[0])}, Y: ${Math.round(data.position[1])}`;
+        debugPinching.innerText = data.isPinching ? 'YES' : 'No';
+        debugGestureData.innerText = JSON.stringify(data.gestureData, null, 2);
+        debugDragState.innerText = dragInfo.state;
+        debugDragTarget.innerText = dragInfo.target;
       }
     });
 
     await tracker.init();
     status.innerText = 'Hand Tracking Ready!';
+    debugStatus.innerText = 'Ready';
 
-    const pauseApp = () => { if (tracker) tracker.pause(); pausedOverlay.style.display = 'flex'; cursor.style.display = 'none'; };
-    const resumeApp = () => { if (tracker) tracker.resume(); pausedOverlay.style.display = 'none'; };
+    const pauseApp = () => { 
+      if (tracker) tracker.pause(); 
+      pausedOverlay.style.display = 'flex'; 
+      cursor.style.display = 'none';
+      debugStatus.innerText = 'Paused';
+    };
+    const resumeApp = () => { 
+      if (tracker) tracker.resume(); 
+      pausedOverlay.style.display = 'none'; 
+      debugStatus.innerText = 'Ready';
+    };
 
     window.addEventListener('blur', pauseApp);
     window.addEventListener('focus', resumeApp);
@@ -145,5 +182,6 @@ export async function init() {
   } catch (err) {
     console.error(err);
     status.innerText = 'Error: ' + err.message;
+    debugStatus.innerText = 'Error';
   }
 }

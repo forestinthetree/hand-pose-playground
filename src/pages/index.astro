@@ -12,13 +12,41 @@ import '../styles/main.css';
 	</head>
 	<body>
 		<div id="app">
-			<fps-monitor style="position: absolute; top: 20px; right: 20px; z-index: 1000;"></fps-monitor>
-			<div id="gesture-selector">
-				<label for="gesture-type">Gesture:</label>
-				<select id="gesture-type">
-					<option value="pinch">Pinch</option>
-					<option value="finger-curve">Finger Curve</option>
-				</select>
+			<fps-monitor style="position: absolute; top: 20px; left: 20px; z-index: 1000;"></fps-monitor>
+			
+			<button id="debug-toggle">Debug View</button>
+			<div id="debug-sidebar" class="hidden">
+				<h3>Debug Info</h3>
+				<div id="debug-content">
+					<div class="debug-section">
+						<h4>Gesture Control</h4>
+						<div id="gesture-selector-sidebar">
+							<label for="gesture-type">Active Gesture:</label>
+							<select id="gesture-type">
+								<option value="pinch">Pinch</option>
+								<option value="finger-curve">Finger Curve</option>
+							</select>
+						</div>
+					</div>
+					<div class="debug-section">
+						<h4>Model State</h4>
+						<p>Status: <span id="debug-status">Initializing...</span></p>
+					</div>
+					<div class="debug-section">
+						<h4>Hand Tracking</h4>
+						<p>Position: <span id="debug-pos">N/A</span></p>
+						<p>Pinching: <span id="debug-pinching">No</span></p>
+					</div>
+					<div class="debug-section">
+						<h4>Drag & Drop</h4>
+						<p>State: <span id="debug-drag-state">IDLE</span></p>
+						<p>Target: <span id="debug-drag-target">None</span></p>
+					</div>
+					<div class="debug-section">
+						<h4>Gesture Data</h4>
+						<div id="debug-gesture-data">N/A</div>
+					</div>
+				</div>
 			</div>
 			<div id="paused-overlay">
 				<h2>Paused</h2>
