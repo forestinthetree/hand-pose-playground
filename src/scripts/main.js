@@ -80,6 +80,12 @@ export async function init() {
         cursor.classList.remove('pinching');
       },
       onUpdate: (data) => {
+        if (!data.landmarks) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          cursor.style.display = 'none';
+          return;
+        }
+
         drawHand(data.landmarks, data.isPinching);
 
         const videoWidth = video.videoWidth;

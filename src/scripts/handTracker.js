@@ -91,14 +91,11 @@ export class HandTracker {
         // --- Gesture State Logic ---
 
         // 1. Dynamic Squeeze Detection
-        // Trigger if we see a clear reduction in distance (squeeze pulse)
-        // or if we are below the absolute start threshold.
         const squeezeDelta = this.prevPinchRatio - pinchRatio;
-        const isSqueezing = squeezeDelta > 0.008; // intentional squeeze motion
+        const isSqueezing = squeezeDelta > 0.008; 
         const isBelowStart = pinchRatio < this.pinchStartRatio;
 
         if (isSqueezing || isBelowStart) {
-          // Fire start event - DragManager will ignore if already dragging
           this.onPinchStart(this.lastRawPosition);
           this.isPinching = true;
           this.wasPinchingDeep = true;
@@ -116,6 +113,18 @@ export class HandTracker {
           position: [...this.lastRawPosition],
           isPinching: this.isPinching,
           landmarks: landmarks
+        });
+      } else {
+        // --- Hand Lost ---
+        if (this.isPinching) {
+          this.isPinching = false;
+          this.onPinchEnd(this.lastRawPosition);
+        }
+        this.lastRawPosition = null;
+        this.onUpdate({
+          position: null,
+          isPinching: false,
+          landmarks: null
         });
       }
     } catch (error) {
