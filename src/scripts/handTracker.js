@@ -7,9 +7,10 @@ export class HandTracker {
     this.model = null;
     this.isPinching = false;
     
-    // Hysteresis thresholds
-    this.pinchStartThreshold = options.pinchStartThreshold || 30; // Closer together to start
-    this.pinchStopThreshold = options.pinchStopThreshold || 80;   // Further apart to stop
+    // Relative thresholds (ratios of the hand scale)
+    // Hand scale is measured from Wrist (0) to Middle MCP (9)
+    this.pinchStartRatio = options.pinchStartRatio || 0.35; // Start when distance < 35% of hand scale
+    this.pinchStopRatio = options.pinchStopRatio || 0.6;    // Stop when distance > 80% of hand scale
     
     this.pinchFrames = 0;
     this.requiredPinchFrames = 2; 
@@ -54,13 +55,23 @@ export class HandTracker {
         const hand = predictions[0];
         const landmarks = hand.landmarks;
 
+        // Calculate hand scale (Wrist to Middle MCP)
+        const wrist = landmarks[0];
+        const middleMCP = landmarks[9];
+        const handScale = Math.sqrt(
+          Math.pow(wrist[0] - middleMCP[0], 2) +
+          Math.pow(wrist[1] - middleMCP[1], 2)
+        );
+
         const thumbTip = landmarks[4];
         const indexTip = landmarks[8];
 
-        const distance = Math.sqrt(
+        const fingerDistance = Math.sqrt(
           Math.pow(thumbTip[0] - indexTip[0], 2) +
           Math.pow(thumbTip[1] - indexTip[1], 2)
         );
+
+        const pinchRatio = fingerDistance / handScale;
 
         const center = [
           (thumbTip[0] + indexTip[0]) / 2,
@@ -75,9 +86,9 @@ export class HandTracker {
           this.lastRawPosition[1] += (center[1] - this.lastRawPosition[1]) * this.internalSmoothing;
         }
 
-        // State-based threshold check (Hysteresis)
-        const threshold = this.isPinching ? this.pinchStopThreshold : this.pinchStartThreshold;
-        const currentlyPinching = distance < threshold;
+        // State-based threshold check (Relative Hysteresis)
+        const threshold = this.isPinching ? this.pinchStopRatio : this.pinchStartRatio;
+        const currentlyPinching = pinchRatio < threshold;
 
         if (currentlyPinching) {
           this.pinchFrames = Math.min(this.pinchFrames + 1, 10);
