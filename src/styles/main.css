@@ -1,0 +1,129 @@
+:root {
+  --video-blur: 30px; /* Adjust this to control video blurriness */
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+  background: #111;
+  color: white;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  opacity: 0.3;
+  filter: blur(var(--video-blur));
+}
+
+#hand-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  z-index: 4;
+  pointer-events: none;
+}
+
+#interaction-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+}
+
+.draggable {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  user-select: none;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease, background-color 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.draggable.hover {
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.draggable.dragging {
+  transform: scale(1.15);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  border-color: white;
+  filter: brightness(1.2);
+}
+
+#box1 { background: #ff4757; top: 200px; left: 200px; }
+#box2 { background: #2ed573; top: 200px; left: 400px; }
+#box3 { background: #1e90ff; top: 400px; left: 300px; }
+
+#cursor {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border: 2px solid black;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 100;
+  transform: translate(-50%, -50%);
+  display: none;
+}
+
+#cursor.pinching {
+  background: #ffec33;
+  transform: translate(-50%, -50%) scale(1.5);
+}
+
+#status {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 20px;
+  z-index: 100;
+}
+
+#paused-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(5px);
+}
+
+#paused-overlay h2 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
