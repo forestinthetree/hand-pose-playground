@@ -189,6 +189,26 @@ video {
   width: 100%;
 }
 
+#camera-toggle-btn {
+  background: #ff4757;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+#camera-toggle-btn.starting {
+  background: #2ed573;
+}
+
+#camera-toggle-btn:hover {
+  filter: brightness(1.1);
+}
+
 #debug-gesture-data {
   white-space: pre-wrap;
   background: rgba(255, 255, 255, 0.05);
