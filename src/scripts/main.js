@@ -222,12 +222,14 @@ async function initTracker() {
         if (gestureEl) gestureEl.innerText = JSON.stringify(hand.gestureData, null, 2);
       });
 
-      // Cleanup debug for missing hands if any (e.g. only 1 hand detected)
-      for (let i = handsData.length; i < 2; i++) {
-        const posEl = document.getElementById(`debug-pos-${i}`);
-        if (posEl) posEl.innerText = 'N/A';
-        // ... rest of cleanup
-      }
+      // Cleanup debug for missing hands
+      const activeIndices = handsData.map(h => h.index);
+      [0, 1].forEach(idx => {
+        if (!activeIndices.includes(idx)) {
+          const posEl = document.getElementById(`debug-pos-${idx}`);
+          if (posEl) posEl.innerText = 'N/A';
+        }
+      });
     }
   });
 

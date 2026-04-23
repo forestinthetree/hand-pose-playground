@@ -5,26 +5,20 @@ import '@mediapipe/hands';
 export class HandTracker {
   constructor(videoElement, options = {}) {
     this.video = videoElement;
-    this.model = null;
     this.detector = null;
-    
-    // Pluggable Gesture Engine
     this.gesture = options.gesture || null;
-    
     this.onUpdate = options.onUpdate || (() => {});
     this.paused = false;
-    this.lastRawPositions = []; // Store positions for multiple hands
+    
+    // Hand Persistence State
+    this.hands = []; // Array of active hand objects { id, position, lostCount, ... }
+    this.nextId = 0;
     this.internalSmoothing = 0.4;
-
-    // Grace period for lost tracking
-    this.lostHandCount = 0;
     this.lostHandThreshold = options.lostHandThreshold || 7; 
   }
 
   async init() {
     await tf.ready();
-    console.log("TensorFlow.js backend:", tf.getBackend());
-    
     const model = handPoseDetection.SupportedModels.MediaPipeHands;
     const detectorConfig = {
       runtime: 'mediapipe',
@@ -37,15 +31,11 @@ export class HandTracker {
     this.track();
   }
 
-  pause() {
-    this.paused = true;
-  }
+  pause() { this.paused = true; }
+  resume() { if (this.paused) { this.paused = false; this.track(); } }
 
-  resume() {
-    if (this.paused) {
-      this.paused = false;
-      this.track();
-    }
+  getDistance(p1, p2) {
+    return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
   }
 
   async track() {
@@ -57,69 +47,112 @@ export class HandTracker {
         return;
       }
 
-      const hands = await this.detector.estimateHands(this.video, {
-        flipHorizontal: false // We handle mirroring in CSS
-      });
+      const detectedHands = await this.detector.estimateHands(this.video, { flipHorizontal: false });
       
-      if (hands && hands.length > 0) {
-        this.lostHandCount = 0;
+      // 1. Process Detections
+      const processedDetections = detectedHands.map(hand => {
+        const landmarks = hand.keypoints.map(kp => [kp.x, kp.y, kp.z || 0]);
+        const wrist = landmarks[0];
+        const middleMCP = landmarks[9];
+        const handScale = Math.sqrt(Math.pow(wrist[0] - middleMCP[0], 2) + Math.pow(wrist[1] - middleMCP[1], 2));
+        const center = [(hand.keypoints[4].x + hand.keypoints[8].x) / 2, (hand.keypoints[4].y + hand.keypoints[8].y) / 2];
         
-        const handsData = hands.map((hand, index) => {
-          // Map keypoints to the legacy [x, y, z] landmarks format
-          const landmarks = hand.keypoints.map(kp => [kp.x, kp.y, kp.z || 0]);
+        return { center, landmarks, handScale, handedness: hand.handedness };
+      });
 
-          // Calculate metadata (hand scale)
-          const wrist = landmarks[0];
-          const middleMCP = landmarks[9];
-          const handScale = Math.sqrt(
-            Math.pow(wrist[0] - middleMCP[0], 2) +
-            Math.pow(wrist[1] - middleMCP[1], 2)
-          );
+      // 2. Proximity Matching
+      const matchedDetections = new Set();
+      const nextHands = [];
 
-          // Calculate center
-          const thumbTip = landmarks[4];
-          const indexTip = landmarks[8];
-          const center = [
-            (thumbTip[0] + indexTip[0]) / 2,
-            (thumbTip[1] + indexTip[1]) / 2
-          ];
+      // Update existing hands
+      this.hands.forEach(hand => {
+        let bestMatch = null;
+        let minDistance = 150; // Threshold for matching
 
-          // Smoothing per hand
-          if (!this.lastRawPositions[index]) {
-            this.lastRawPositions[index] = center;
-          } else {
-            this.lastRawPositions[index][0] += (center[0] - this.lastRawPositions[index][0]) * this.internalSmoothing;
-            this.lastRawPositions[index][1] += (center[1] - this.lastRawPositions[index][1]) * this.internalSmoothing;
+        processedDetections.forEach((det, idx) => {
+          if (matchedDetections.has(idx)) return;
+          const dist = this.getDistance(hand.position, det.center);
+          if (dist < minDistance) {
+            minDistance = dist;
+            bestMatch = { det, idx };
           }
-
-          let gestureState = { active: false };
-          if (this.gesture) {
-            gestureState = this.gesture.update(landmarks, { handScale }, index);
-          }
-
-          return {
-            index,
-            position: [...this.lastRawPositions[index]],
-            isPinching: gestureState.active,
-            landmarks: landmarks,
-            gestureData: gestureState
-          };
         });
 
-        // Cleanup stale hand positions
-        if (this.lastRawPositions.length > hands.length) {
-          this.lastRawPositions.splice(hands.length);
+        if (bestMatch) {
+          matchedDetections.add(bestMatch.idx);
+          const { det } = bestMatch;
+          
+          hand.position = [
+            hand.position[0] + (det.center[0] - hand.position[0]) * this.internalSmoothing,
+            hand.position[1] + (det.center[1] - hand.position[1]) * this.internalSmoothing
+          ];
+          hand.landmarks = det.landmarks;
+          hand.handScale = det.handScale;
+          hand.label = det.handedness;
+          hand.lostCount = 0;
+
+          if (this.gesture) {
+            const gestureState = this.gesture.update(hand.landmarks, { handScale: hand.handScale }, hand.id);
+            hand.isPinching = gestureState.active;
+            hand.gestureData = gestureState;
+          }
+          nextHands.push(hand);
+        } else {
+          // Hand not found in this frame
+          hand.lostCount++;
+          if (hand.lostCount < this.lostHandThreshold) {
+            nextHands.push(hand); // Keep it alive but frozen
+          } else {
+            if (this.gesture) this.gesture.reset(hand.id);
+          }
+        }
+      });
+
+      // 3. Spawn new hands for unmatched detections
+      processedDetections.forEach((det, idx) => {
+        if (matchedDetections.has(idx)) return;
+        if (nextHands.length >= 2) return; // Limit to 2 hands
+
+        // Find an available ID (0 or 1)
+        const usedIds = nextHands.map(h => h.id);
+        const id = [0, 1].find(i => !usedIds.includes(i)) ?? this.nextId++;
+
+        const newHand = {
+          id,
+          label: det.handedness,
+          position: det.center,
+          landmarks: det.landmarks,
+          handScale: det.handScale,
+          isPinching: false,
+          gestureData: { active: false },
+          lostCount: 0
+        };
+
+        if (this.gesture) {
+          const gestureState = this.gesture.update(newHand.landmarks, { handScale: newHand.handScale }, newHand.id);
+          newHand.isPinching = gestureState.active;
+          newHand.gestureData = gestureState;
         }
 
-        this.onUpdate(handsData);
-      } else {
-        this.lostHandCount++;
-        if (this.lostHandCount >= this.lostHandThreshold) {
-          if (this.gesture) this.gesture.reset();
-          this.lastRawPositions = [];
-          this.onUpdate([]);
-        }
-      }
+        nextHands.push(newHand);
+      });
+
+      this.hands = nextHands;
+
+      // Map to consistent structure for output (sorting by ID ensures stable index)
+      const output = this.hands
+        .sort((a, b) => a.id - b.id)
+        .map(h => ({
+          index: h.id, // interaction index
+          label: h.label, // model label
+          position: h.position,
+          isPinching: h.isPinching,
+          landmarks: h.landmarks,
+          gestureData: h.gestureData
+        }));
+
+      this.onUpdate(output);
+
     } catch (error) {
       console.error("Hand tracking error:", error);
     }
