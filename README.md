@@ -4,7 +4,7 @@ An interactive experimental webpage using TensorFlow.js Handpose model to detect
 
 ## Features
 
-- **Hand Tracking:** Real-time hand detection using `@tensorflow-models/handpose`.
+- **Hand Tracking:** Real-time multi-hand detection using `@tensorflow-models/hand-pose-detection`.
 - **Pinch-to-Click:** Detects when your thumb and index finger meet to trigger a "click" or "grab".
 - **Drag & Drop:** Move physical-style blocks around the screen using natural hand gestures.
 - **Visual Debugging:** Optional hand skeleton visualization and performance (FPS) monitor.
@@ -52,5 +52,5 @@ You can tune the experience in `src/scripts/main.js` and `src/styles/main.css`:
 
 - [Astro](https://astro.build/)
 - [TensorFlow.js](https://www.tensorflow.org/js)
-- [Handpose Model](https://github.com/tensorflow/tfjs-models/tree/master/handpose)
+- [Handpose Model](https://github.com/tensorflow/tfjs-models/tree/master/hand-pose-detection)
 - [Vanilla Web Components](https://developer.mozilla.org/en-US/docs/Web/API/Web_components)

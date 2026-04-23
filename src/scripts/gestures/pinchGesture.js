@@ -1,5 +1,5 @@
 /**
- * Standard Pinch Gesture Plugin
+ * Standard Pinch Gesture Plugin (Multi-hand Support)
  * Detects clicks based on the distance between thumb and index finger.
  */
 export class PinchGesture {
@@ -7,24 +7,32 @@ export class PinchGesture {
     this.name = 'pinch';
     this.pinchStartRatio = options.pinchStartRatio || 0.35;
     this.pinchStopRatio = options.pinchStopRatio || 0.75;
-    this.prevPinchRatio = 1.0;
-    this.isPinching = false;
+    
+    // Per-hand state
+    this.handsState = []; // [{ isPinching, prevPinchRatio }]
     
     // Callbacks
     this.onStart = options.onStart || (() => {});
     this.onEnd = options.onEnd || (() => {});
   }
 
-  update(landmarks, metadata) {
+  getHandState(index) {
+    if (!this.handsState[index]) {
+      this.handsState[index] = {
+        isPinching: false,
+        prevPinchRatio: 1.0
+      };
+    }
+    return this.handsState[index];
+  }
+
+  update(landmarks, metadata, handIndex = 0) {
     if (!landmarks) {
-      if (this.isPinching) {
-        this.isPinching = false;
-        this.onEnd();
-      }
+      this.reset(handIndex);
       return { active: false };
     }
 
-    // Use metadata provided by tracker (handScale)
+    const state = this.getHandState(handIndex);
     const { handScale } = metadata;
     
     const thumbTip = landmarks[4];
@@ -38,36 +46,47 @@ export class PinchGesture {
     const pinchRatio = fingerDistance / handScale;
 
     // 1. Dynamic Squeeze & Threshold Detection
-    const squeezeDelta = this.prevPinchRatio - pinchRatio;
+    const squeezeDelta = state.prevPinchRatio - pinchRatio;
     const isSqueezing = squeezeDelta > 0.008;
     const isBelowStart = pinchRatio < this.pinchStartRatio;
 
     if (isSqueezing || isBelowStart) {
-      if (!this.isPinching || isSqueezing) {
-        this.onStart();
-        this.isPinching = true;
+      if (!state.isPinching || isSqueezing) {
+        if (!state.isPinching) this.onStart(handIndex);
+        state.isPinching = true;
       }
     }
 
     // 2. Release Detection
-    if (this.isPinching && pinchRatio > this.pinchStopRatio) {
-      this.isPinching = false;
-      this.onEnd();
+    if (state.isPinching && pinchRatio > this.pinchStopRatio) {
+      state.isPinching = false;
+      this.onEnd(handIndex);
     }
 
-    this.prevPinchRatio = pinchRatio;
+    state.prevPinchRatio = pinchRatio;
 
     return {
-      active: this.isPinching,
+      active: state.isPinching,
       ratio: pinchRatio
     };
   }
 
-  reset() {
-    if (this.isPinching) {
-      this.isPinching = false;
-      this.onEnd();
+  reset(handIndex) {
+    if (handIndex !== undefined) {
+      const state = this.handsState[handIndex];
+      if (state && state.isPinching) {
+        state.isPinching = false;
+        this.onEnd(handIndex);
+      }
+      if (state) state.prevPinchRatio = 1.0;
+    } else {
+      this.handsState.forEach((state, idx) => {
+        if (state.isPinching) {
+          state.isPinching = false;
+          this.onEnd(idx);
+        }
+        state.prevPinchRatio = 1.0;
+      });
     }
-    this.prevPinchRatio = 1.0;
   }
 }

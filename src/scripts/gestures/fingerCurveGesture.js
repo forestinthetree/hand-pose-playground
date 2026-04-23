@@ -1,13 +1,22 @@
 /**
- * Finger Curve Gesture Plugin (Experimental)
+ * Finger Curve Gesture Plugin (Experimental) (Multi-hand Support)
  * Detects clicks based on the curvature/flex of the fingers.
  */
 export class FingerCurveGesture {
   constructor(options = {}) {
     this.name = 'finger-curve';
-    this.isPinching = false;
+    this.handsState = []; // [{ isPinching }]
     this.onStart = options.onStart || (() => {});
     this.onEnd = options.onEnd || (() => {});
+  }
+
+  getHandState(index) {
+    if (!this.handsState[index]) {
+      this.handsState[index] = {
+        isPinching: false
+      };
+    }
+    return this.handsState[index];
   }
 
   // Helper to calculate angle between three points
@@ -22,11 +31,13 @@ export class FingerCurveGesture {
     return Math.acos(dot / (mag1 * mag2));
   }
 
-  update(landmarks, metadata) {
+  update(landmarks, metadata, handIndex = 0) {
     if (!landmarks) {
-      this.reset();
+      this.reset(handIndex);
       return { active: false };
     }
+
+    const state = this.getHandState(handIndex);
 
     // Example logic: Check angle at the index finger middle joint (Landmark 6)
     // and thumb joint (Landmark 3)
@@ -40,24 +51,34 @@ export class FingerCurveGesture {
 
     const currentlyCurved = curveValue < threshold;
 
-    if (currentlyCurved && !this.isPinching) {
-      this.isPinching = true;
-      this.onStart();
-    } else if (!currentlyCurved && this.isPinching) {
-      this.isPinching = false;
-      this.onEnd();
+    if (currentlyCurved && !state.isPinching) {
+      state.isPinching = true;
+      this.onStart(handIndex);
+    } else if (!currentlyCurved && state.isPinching) {
+      state.isPinching = false;
+      this.onEnd(handIndex);
     }
 
     return {
-      active: this.isPinching,
+      active: state.isPinching,
       curve: curveValue
     };
   }
 
-  reset() {
-    if (this.isPinching) {
-      this.isPinching = false;
-      this.onEnd();
+  reset(handIndex) {
+    if (handIndex !== undefined) {
+      const state = this.handsState[handIndex];
+      if (state && state.isPinching) {
+        state.isPinching = false;
+        this.onEnd(handIndex);
+      }
+    } else {
+      this.handsState.forEach((state, idx) => {
+        if (state.isPinching) {
+          state.isPinching = false;
+          this.onEnd(idx);
+        }
+      });
     }
   }
 }

@@ -36,20 +36,31 @@ import '../styles/main.css';
 						<h4>Model State</h4>
 						<p>Status: <span id="debug-status">Initializing...</span></p>
 					</div>
-					<div class="debug-section">
-						<h4>Hand Tracking</h4>
-						<p>Position: <span id="debug-pos">N/A</span></p>
-						<p>Pinching: <span id="debug-pinching">No</span></p>
+
+					<!-- Hand 1 Debug -->
+					<div class="debug-hand-container">
+						<div class="debug-section">
+							<h4>Hand 1</h4>
+							<p>Pos: <span id="debug-pos-0">N/A</span></p>
+							<p>Pinching: <span id="debug-pinching-0">No</span></p>
+							<p>Drag: <span id="debug-drag-state-0">IDLE</span></p>
+							<p>Target: <span id="debug-drag-target-0">None</span></p>
+							<div id="debug-gesture-data-0" class="mini-debug">N/A</div>
+						</div>
 					</div>
-					<div class="debug-section">
-						<h4>Drag & Drop</h4>
-						<p>State: <span id="debug-drag-state">IDLE</span></p>
-						<p>Target: <span id="debug-drag-target">None</span></p>
+
+					<!-- Hand 2 Debug -->
+					<div class="debug-hand-container">
+						<div class="debug-section">
+							<h4>Hand 2</h4>
+							<p>Pos: <span id="debug-pos-1">N/A</span></p>
+							<p>Pinching: <span id="debug-pinching-1">No</span></p>
+							<p>Drag: <span id="debug-drag-state-1">IDLE</span></p>
+							<p>Target: <span id="debug-drag-target-1">None</span></p>
+							<div id="debug-gesture-data-1" class="mini-debug">N/A</div>
+						</div>
 					</div>
-					<div class="debug-section">
-						<h4>Gesture Data</h4>
-						<div id="debug-gesture-data">N/A</div>
-					</div>
+
 					<div class="debug-section">
 						<h4>Links</h4>
 						<a href="https://github.com/forestinthetree/hand-pose-playground" target="_blank" class="debug-link">GitHub Repository</a>
@@ -67,7 +78,8 @@ import '../styles/main.css';
 				<div id="box2" class="draggable">Green</div>
 				<div id="box3" class="draggable">Blue</div>
 			</div>
-			<div id="cursor"></div>
+			<div id="cursor-0" class="cursor"></div>
+			<div id="cursor-1" class="cursor"></div>
 			<div id="status">Initializing Handpose...</div>
 		</div>
 

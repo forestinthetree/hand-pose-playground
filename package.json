@@ -12,7 +12,8 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@tensorflow-models/handpose": "^0.1.0",
+    "@mediapipe/hands": "^0.4.1675469240",
+    "@tensorflow-models/hand-pose-detection": "^2.0.1",
     "@tensorflow/tfjs": "^4.22.0",
     "astro": "^6.1.8"
   }

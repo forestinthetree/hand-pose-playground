@@ -16,17 +16,11 @@ const video = document.getElementById('webcam');
 const canvas = document.getElementById('hand-canvas');
 const ctx = canvas.getContext('2d');
 const status = document.getElementById('status');
-const cursor = document.getElementById('cursor');
 const pausedOverlay = document.getElementById('paused-overlay');
 const gestureSelect = document.getElementById('gesture-type');
 const debugToggle = document.getElementById('debug-toggle');
 const debugSidebar = document.getElementById('debug-sidebar');
 const debugStatus = document.getElementById('debug-status');
-const debugPos = document.getElementById('debug-pos');
-const debugPinching = document.getElementById('debug-pinching');
-const debugGestureData = document.getElementById('debug-gesture-data');
-const debugDragState = document.getElementById('debug-drag-state');
-const debugDragTarget = document.getElementById('debug-drag-target');
 const cameraToggleBtn = document.getElementById('camera-toggle-btn');
 
 const dragManager = new DragManager();
@@ -67,7 +61,7 @@ async function stopSystem() {
   }
   video.srcObject = null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  cursor.style.display = 'none';
+  document.querySelectorAll('.cursor').forEach(c => c.style.display = 'none');
   isSystemRunning = false;
   cameraToggleBtn.innerText = 'Start Camera';
   cameraToggleBtn.classList.add('starting');
@@ -100,18 +94,19 @@ if (cameraToggleBtn) {
 }
 
 async function initTracker() {
-  let currentScreenPos = [0, 0];
-  let smoothedPos = [0, 0];
+  let smoothedPositions = [];
   const lerp = (start, end, factor) => start + (end - start) * factor;
 
   const gestureCallbacks = {
-    onStart: () => {
-      dragManager.handlePinchStart(currentScreenPos);
-      cursor.classList.add('pinching');
+    onStart: (handIndex) => {
+      // Logic handled in updatePosition now for "start while pinching"
+      const cursor = document.getElementById(`cursor-${handIndex}`);
+      if (cursor) cursor.classList.add('pinching');
     },
-    onEnd: () => {
-      dragManager.handlePinchEnd();
-      cursor.classList.remove('pinching');
+    onEnd: (handIndex) => {
+      dragManager.handlePinchEnd(handIndex);
+      const cursor = document.getElementById(`cursor-${handIndex}`);
+      if (cursor) cursor.classList.remove('pinching');
     }
   };
 
@@ -129,76 +124,110 @@ async function initTracker() {
     }
   };
 
-  const drawHand = (landmarks, isPinching) => {
+  const drawHands = (hands) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
     }
 
-    const alpha = isPinching ? HAND_PINCH_OPACITY : HAND_TRACK_OPACITY;
-    const color = isPinching ? `rgba(255, 236, 51, ${alpha})` : `rgba(46, 213, 115, ${alpha})`;
-    
-    ctx.strokeStyle = color;
-    ctx.lineWidth = HAND_LINE_WIDTH;
-    ctx.fillStyle = color;
+    hands.forEach(hand => {
+      const { landmarks, isPinching } = hand;
+      const alpha = isPinching ? HAND_PINCH_OPACITY : HAND_TRACK_OPACITY;
+      const color = isPinching ? `rgba(255, 236, 51, ${alpha})` : `rgba(46, 213, 115, ${alpha})`;
+      
+      ctx.strokeStyle = color;
+      ctx.lineWidth = HAND_LINE_WIDTH;
+      ctx.fillStyle = color;
 
-    const fingerIndices = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
-    fingerIndices.forEach(finger => {
-      ctx.beginPath();
-      ctx.moveTo(landmarks[finger[0]][0], landmarks[finger[0]][1]);
-      for (let i = 1; i < finger.length; i++) ctx.lineTo(landmarks[finger[i]][0], landmarks[finger[i]][1]);
-      ctx.stroke();
-    });
+      const fingerIndices = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
+      fingerIndices.forEach(finger => {
+        ctx.beginPath();
+        ctx.moveTo(landmarks[finger[0]][0], landmarks[finger[0]][1]);
+        for (let i = 1; i < finger.length; i++) ctx.lineTo(landmarks[finger[i]][0], landmarks[finger[i]][1]);
+        ctx.stroke();
+      });
 
-    landmarks.forEach(point => {
-      ctx.beginPath(); ctx.arc(point[0], point[1], HAND_POINT_RADIUS, 0, Math.PI * 2); ctx.fill();
+      landmarks.forEach(point => {
+        ctx.beginPath(); ctx.arc(point[0], point[1], HAND_POINT_RADIUS, 0, Math.PI * 2); ctx.fill();
+      });
     });
   };
 
   tracker = new HandTracker(video, {
     gesture: initialGesture,
-    onUpdate: (data) => {
-      if (!data.landmarks) {
+    onUpdate: (handsData) => {
+      if (handsData.length === 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        cursor.style.display = 'none';
-        debugPos.innerText = 'N/A';
-        debugPinching.innerText = 'No';
-        debugGestureData.innerText = 'N/A';
-        debugDragState.innerText = 'IDLE';
-        debugDragTarget.innerText = 'None';
+        document.querySelectorAll('.cursor').forEach(c => c.style.display = 'none');
+        [0, 1].forEach(idx => {
+          const posEl = document.getElementById(`debug-pos-${idx}`);
+          const pinchEl = document.getElementById(`debug-pinching-${idx}`);
+          const stateEl = document.getElementById(`debug-drag-state-${idx}`);
+          const targetEl = document.getElementById(`debug-drag-target-${idx}`);
+          const gestureEl = document.getElementById(`debug-gesture-data-${idx}`);
+          if (posEl) posEl.innerText = 'N/A';
+          if (pinchEl) pinchEl.innerText = 'No';
+          if (stateEl) stateEl.innerText = 'IDLE';
+          if (targetEl) targetEl.innerText = 'None';
+          if (gestureEl) gestureEl.innerText = 'N/A';
+        });
         return;
       }
 
-      drawHand(data.landmarks, data.isPinching);
+      drawHands(handsData);
 
       const videoWidth = video.videoWidth;
       const videoHeight = video.videoHeight;
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
 
-      const targetX = (1 - (data.position[0] / videoWidth)) * screenWidth;
-      const targetY = (data.position[1] / videoHeight) * screenHeight;
-      
-      if (smoothedPos[0] === 0 && smoothedPos[1] === 0) {
-        smoothedPos = [targetX, targetY];
-      } else {
-        smoothedPos[0] = lerp(smoothedPos[0], targetX, SMOOTHING_FACTOR);
-        smoothedPos[1] = lerp(smoothedPos[1], targetY, SMOOTHING_FACTOR);
+      // Reset cursors visibility
+      document.querySelectorAll('.cursor').forEach(c => c.style.display = 'none');
+
+      handsData.forEach((hand, idx) => {
+        const targetX = (1 - (hand.position[0] / videoWidth)) * screenWidth;
+        const targetY = (hand.position[1] / videoHeight) * screenHeight;
+        
+        if (!smoothedPositions[idx]) {
+          smoothedPositions[idx] = [targetX, targetY];
+        } else {
+          smoothedPositions[idx][0] = lerp(smoothedPositions[idx][0], targetX, SMOOTHING_FACTOR);
+          smoothedPositions[idx][1] = lerp(smoothedPositions[idx][1], targetY, SMOOTHING_FACTOR);
+        }
+
+        const currentScreenPos = [...smoothedPositions[idx]];
+        const cursor = document.getElementById(`cursor-${idx}`);
+        if (cursor) {
+          cursor.style.display = 'block';
+          cursor.style.left = `${currentScreenPos[0]}px`;
+          cursor.style.top = `${currentScreenPos[1]}px`;
+          if (hand.isPinching) cursor.classList.add('pinching');
+          else cursor.classList.remove('pinching');
+        }
+
+        const dragInfo = dragManager.updatePosition(currentScreenPos, hand.isPinching, idx);
+
+        // Update Debug Sidebar for this hand
+        const posEl = document.getElementById(`debug-pos-${idx}`);
+        const pinchEl = document.getElementById(`debug-pinching-${idx}`);
+        const stateEl = document.getElementById(`debug-drag-state-${idx}`);
+        const targetEl = document.getElementById(`debug-drag-target-${idx}`);
+        const gestureEl = document.getElementById(`debug-gesture-data-${idx}`);
+
+        if (posEl) posEl.innerText = `X: ${Math.round(hand.position[0])}, Y: ${Math.round(hand.position[1])}`;
+        if (pinchEl) pinchEl.innerText = hand.isPinching ? 'YES' : 'No';
+        if (stateEl) stateEl.innerText = dragInfo.state;
+        if (targetEl) targetEl.innerText = dragInfo.target;
+        if (gestureEl) gestureEl.innerText = JSON.stringify(hand.gestureData, null, 2);
+      });
+
+      // Cleanup debug for missing hands if any (e.g. only 1 hand detected)
+      for (let i = handsData.length; i < 2; i++) {
+        const posEl = document.getElementById(`debug-pos-${i}`);
+        if (posEl) posEl.innerText = 'N/A';
+        // ... rest of cleanup
       }
-
-      currentScreenPos = [...smoothedPos];
-      cursor.style.display = 'block';
-      cursor.style.left = `${currentScreenPos[0]}px`;
-      cursor.style.top = `${currentScreenPos[1]}px`;
-      const dragInfo = dragManager.updatePosition(currentScreenPos, data.isPinching);
-
-      // Update Debug Sidebar
-      debugPos.innerText = `X: ${Math.round(data.position[0])}, Y: ${Math.round(data.position[1])}`;
-      debugPinching.innerText = data.isPinching ? 'YES' : 'No';
-      debugGestureData.innerText = JSON.stringify(data.gestureData, null, 2);
-      debugDragState.innerText = dragInfo.state;
-      debugDragTarget.innerText = dragInfo.target;
     }
   });
 
@@ -218,7 +247,7 @@ export async function init() {
       if (tracker && isSystemRunning) {
         tracker.pause(); 
         pausedOverlay.style.display = 'flex'; 
-        cursor.style.display = 'none';
+        document.querySelectorAll('.cursor').forEach(c => c.style.display = 'none');
         debugStatus.innerText = 'Paused';
       }
     };
