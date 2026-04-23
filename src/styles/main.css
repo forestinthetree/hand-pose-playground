@@ -209,6 +209,17 @@ video {
   filter: brightness(1.1);
 }
 
+.debug-link {
+  color: #1e90ff;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.debug-link:hover {
+  text-decoration: underline;
+}
+
 #debug-gesture-data {
   white-space: pre-wrap;
   background: rgba(255, 255, 255, 0.05);
