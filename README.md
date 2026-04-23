@@ -30,7 +30,7 @@ An interactive experimental webpage using TensorFlow.js Handpose model to detect
    ```
 
 3. **Open the App:**
-   Navigate to `http://localhost:3000` (or the port specified in your console).
+   Navigate to `http://localhost:7900` (or the port specified in your console).
 
 ## How to Play
 
