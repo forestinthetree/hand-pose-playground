@@ -268,3 +268,34 @@ video {
   font-size: 3rem;
   margin-bottom: 1rem;
 }
+
+.top-nav {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 30px;
+  border-radius: 30px;
+  z-index: 2100; /* Above paused overlay */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.top-nav a {
+  color: #888;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.top-nav a:hover {
+  color: #fff;
+}
+
+.top-nav a.active {
+  color: #2ed573;
+}

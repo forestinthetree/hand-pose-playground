@@ -1,0 +1,32 @@
+---
+import '../styles/face.css';
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Face Mesh Tracker</title>
+	</head>
+	<body>
+		<div id="app">
+			<nav class="top-nav">
+				<a href="/">Hands</a>
+				<a href="/face" class="active">Face</a>
+			</nav>
+
+			<fps-monitor style="position: absolute; top: 20px; left: 20px; z-index: 1000;"></fps-monitor>
+
+			<div id="status">Initializing Face Mesh...</div>
+			<canvas id="face-canvas"></canvas>
+			<video id="webcam" autoplay playsinline></video>
+		</div>
+
+		<script>
+			import '../components/fps-monitor.js';
+			import { init } from '../scripts/faceOnly.js';
+			init();
+		</script>
+	</body>
+</html>
