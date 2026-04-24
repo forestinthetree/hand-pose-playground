@@ -52,36 +52,20 @@ class FPSMonitor extends HTMLElement {
       <style>
         :host {
           display: inline-block;
-          font-family: monospace;
-          background: rgba(0, 0, 0, 0.7);
-          color: white;
-          padding: 8px 12px;
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          font-family: inherit;
           pointer-events: none;
           user-select: none;
-          min-width: 70px;
-          text-align: center;
-        }
-        .label {
-          font-size: 10px;
-          text-transform: uppercase;
-          opacity: 0.6;
-          display: block;
-          margin-bottom: 2px;
         }
         #fps-value {
-          font-size: 18px;
           font-weight: bold;
+          font-family: monospace;
         }
-        .unit {
-          font-size: 10px;
-          opacity: 0.6;
+        .label {
+          margin-right: 4px;
         }
       </style>
-      <span class="label">Performance</span>
+      <span class="label">FPS:</span>
       <span id="fps-value">--</span>
-      <span class="unit">FPS</span>
     `;
   }
 }

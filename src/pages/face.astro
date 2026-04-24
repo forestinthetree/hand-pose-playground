@@ -16,11 +16,13 @@ import '../styles/face.css';
 				<a href="/face" class="active">Face</a>
 			</nav>
 
-			<fps-monitor style="position: absolute; top: 20px; left: 20px; z-index: 1000;"></fps-monitor>
-
-			<div id="status">Initializing Face Mesh...</div>
 			<canvas id="face-canvas"></canvas>
 			<video id="webcam" autoplay playsinline></video>
+
+			<div class="status-bar">
+				<div id="status">Initializing Face Mesh...</div>
+				<fps-monitor></fps-monitor>
+			</div>
 		</div>
 
 		<script>

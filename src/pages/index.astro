@@ -17,8 +17,6 @@ import '../styles/main.css';
 				<a href="/face">Face</a>
 			</nav>
 
-			<fps-monitor style="position: absolute; top: 20px; left: 20px; z-index: 1000;"></fps-monitor>
-
 			<button id="debug-toggle">Debug View</button>
 			<div id="debug-sidebar" class="hidden">
 				<h3>Debug Info</h3>
@@ -72,6 +70,7 @@ import '../styles/main.css';
 					</div>
 				</div>
 			</div>
+
 			<div id="paused-overlay">
 				<h2>Paused</h2>
 				<p>Click anywhere to resume</p>
@@ -85,7 +84,11 @@ import '../styles/main.css';
 			</div>
 			<div id="cursor-0" class="cursor"></div>
 			<div id="cursor-1" class="cursor"></div>
-			<div id="status">Initializing Handpose...</div>
+
+			<div class="status-bar">
+				<div id="status">Initializing Handpose...</div>
+				<fps-monitor></fps-monitor>
+			</div>
 		</div>
 
 		<script>
