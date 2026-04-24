@@ -256,7 +256,7 @@ async function initTracker() {
 
   await tracker.init();
   debugStatus.innerText = 'Ready';
-  status.innerText = 'Hand Tracking Ready!';
+  status.innerText = 'Pinch to drag and drop 👌🏼';
 }
 
 export async function init() {
