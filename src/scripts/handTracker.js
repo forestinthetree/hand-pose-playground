@@ -1,4 +1,3 @@
-import * as tf from '@tensorflow/tfjs';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
 import '@mediapipe/hands';
 
@@ -18,7 +17,6 @@ export class HandTracker {
   }
 
   async init() {
-    await tf.ready();
     const model = handPoseDetection.SupportedModels.MediaPipeHands;
     const detectorConfig = {
       runtime: 'mediapipe',
