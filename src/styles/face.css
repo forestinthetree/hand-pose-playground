@@ -62,7 +62,6 @@ video {
 
 #status {
   flex: 1;
-  text-transform: uppercase;
   letter-spacing: 1px;
   opacity: 0.8;
 }
