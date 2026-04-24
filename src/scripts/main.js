@@ -23,6 +23,41 @@ const debugSidebar = document.getElementById('debug-sidebar');
 const debugStatus = document.getElementById('debug-status');
 const cameraToggleBtn = document.getElementById('camera-toggle-btn');
 
+// --- Centralized System State Management ---
+const SystemState = {
+  INITIALIZING: 'INITIALIZING',
+  STARTING_CAMERA: 'STARTING_CAMERA',
+  LOADING_MODEL: 'LOADING_MODEL',
+  RUNNING: 'RUNNING',
+  PAUSED: 'PAUSED',
+  STOPPED: 'STOPPED',
+  ERROR: 'ERROR',
+
+  messages: {
+    INITIALIZING: 'Initializing Handpose...',
+    STARTING_CAMERA: 'Starting Camera...',
+    LOADING_MODEL: 'Loading Model...',
+    RUNNING: 'Pinch to drag and drop 👌🏼',
+    PAUSED: 'Paused',
+    STOPPED: 'Camera Stopped',
+    ERROR: (msg) => `Error: ${msg}`
+  },
+
+  set(state, extraInfo = '') {
+    this.currentState = state;
+    const message = typeof this.messages[state] === 'function' 
+      ? this.messages[state](extraInfo) 
+      : this.messages[state];
+    
+    if (status) status.innerText = message;
+    if (debugStatus) {
+      // Capitalize first letter for debug sidebar status
+      debugStatus.innerText = state.charAt(0) + state.slice(1).toLowerCase().replace('_', ' ');
+    }
+    console.log(`[SystemState] ${state}${extraInfo ? ': ' + extraInfo : ''}`);
+  }
+};
+
 const dragManager = new DragManager();
 let tracker = null;
 let currentStream = null;
@@ -65,16 +100,15 @@ async function stopSystem() {
   isSystemRunning = false;
   cameraToggleBtn.innerText = 'Start Camera';
   cameraToggleBtn.classList.add('starting');
-  debugStatus.innerText = 'Stopped';
-  status.innerText = 'Camera Stopped';
+  SystemState.set(SystemState.STOPPED);
 }
 
 async function startSystem() {
-  status.innerText = 'Starting Camera...';
-  debugStatus.innerText = 'Starting...';
+  SystemState.set(SystemState.STARTING_CAMERA);
   await setupWebcam();
   if (tracker) {
     tracker.resume();
+    SystemState.set(SystemState.RUNNING);
   } else {
     await initTracker();
   }
@@ -146,6 +180,7 @@ function drawHands(hands) {
 }
 
 async function initTracker() {
+  SystemState.set(SystemState.LOADING_MODEL);
   let smoothedPositions = [];
   const lerp = (start, end, factor) => start + (end - start) * factor;
 
@@ -255,15 +290,13 @@ async function initTracker() {
   });
 
   await tracker.init();
-  debugStatus.innerText = 'Ready';
-  status.innerText = 'Pinch to drag and drop 👌🏼';
+  SystemState.set(SystemState.RUNNING);
 }
 
 export async function init() {
   try {
+    SystemState.set(SystemState.INITIALIZING);
     await setupWebcam();
-    status.innerText = 'Loading Model...';
-    debugStatus.innerText = 'Loading Model...';
     await initTracker();
 
     const pauseApp = () => { 
@@ -271,14 +304,14 @@ export async function init() {
         tracker.pause(); 
         pausedOverlay.style.display = 'flex'; 
         document.querySelectorAll('.cursor').forEach(c => c.style.display = 'none');
-        debugStatus.innerText = 'Paused';
+        SystemState.set(SystemState.PAUSED);
       }
     };
     const resumeApp = () => { 
       if (tracker && isSystemRunning) {
         tracker.resume(); 
         pausedOverlay.style.display = 'none'; 
-        debugStatus.innerText = 'Ready';
+        SystemState.set(SystemState.RUNNING);
       }
     };
 
@@ -287,7 +320,6 @@ export async function init() {
     pausedOverlay.addEventListener('click', resumeApp);
   } catch (err) {
     console.error(err);
-    status.innerText = 'Error: ' + err.message;
-    debugStatus.innerText = 'Error';
+    SystemState.set(SystemState.ERROR, err.message);
   }
 }
