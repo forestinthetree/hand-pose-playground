@@ -93,13 +93,64 @@ if (cameraToggleBtn) {
   });
 }
 
+function drawHands(hands) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  }
+
+  hands.forEach(hand => {
+    const { landmarks, isPinching } = hand;
+    const alpha = isPinching ? 0.8 : 0.5;
+    const color = isPinching ? `rgba(255, 236, 51, ${alpha})` : `rgba(46, 213, 115, ${alpha})`;
+    const fillColor = isPinching ? `rgba(255, 236, 51, 0.15)` : `rgba(46, 213, 115, 0.15)`;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = fillColor;
+
+    // Path tracing around the hand silhouette
+    const outlineIndices = [
+      0, 1, 2, 3, 4, // Thumb
+      3, 2, 1, 
+      5, 6, 7, 8, // Index
+      7, 6, 5,
+      9, 10, 11, 12, // Middle
+      11, 10, 9,
+      13, 14, 15, 16, // Ring
+      15, 14, 13,
+      17, 18, 19, 20, // Pinky
+      17, 0 // Back to wrist
+    ];
+
+    ctx.beginPath();
+    ctx.moveTo(landmarks[outlineIndices[0]][0], landmarks[outlineIndices[0]][1]);
+    for (let i = 1; i < outlineIndices.length; i++) {
+      const idx = outlineIndices[i];
+      ctx.lineTo(landmarks[idx][0], landmarks[idx][1]);
+    }
+    ctx.closePath();
+
+    ctx.fill();
+    ctx.stroke();
+
+    // Draw only the palm center point for feedback
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(landmarks[9][0], landmarks[9][1], 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 async function initTracker() {
   let smoothedPositions = [];
   const lerp = (start, end, factor) => start + (end - start) * factor;
 
   const gestureCallbacks = {
     onStart: (handIndex) => {
-      // Logic handled in updatePosition now for "start while pinching"
       const cursor = document.getElementById(`cursor-${handIndex}`);
       if (cursor) cursor.classList.add('pinching');
     },
@@ -122,36 +173,6 @@ async function initTracker() {
       if (tracker.gesture) tracker.gesture.reset();
       tracker.gesture = gestures[e.target.value];
     }
-  };
-
-  const drawHands = (hands) => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    }
-
-    hands.forEach(hand => {
-      const { landmarks, isPinching } = hand;
-      const alpha = isPinching ? HAND_PINCH_OPACITY : HAND_TRACK_OPACITY;
-      const color = isPinching ? `rgba(255, 236, 51, ${alpha})` : `rgba(46, 213, 115, ${alpha})`;
-      
-      ctx.strokeStyle = color;
-      ctx.lineWidth = HAND_LINE_WIDTH;
-      ctx.fillStyle = color;
-
-      const fingerIndices = [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
-      fingerIndices.forEach(finger => {
-        ctx.beginPath();
-        ctx.moveTo(landmarks[finger[0]][0], landmarks[finger[0]][1]);
-        for (let i = 1; i < finger.length; i++) ctx.lineTo(landmarks[finger[i]][0], landmarks[finger[i]][1]);
-        ctx.stroke();
-      });
-
-      landmarks.forEach(point => {
-        ctx.beginPath(); ctx.arc(point[0], point[1], HAND_POINT_RADIUS, 0, Math.PI * 2); ctx.fill();
-      });
-    });
   };
 
   tracker = new HandTracker(video, {
