@@ -54,3 +54,7 @@ You can tune the experience in `src/scripts/main.js` and `src/styles/main.css`:
 - [TensorFlow.js](https://www.tensorflow.org/js)
 - [Handpose Model](https://github.com/tensorflow/tfjs-models/tree/master/hand-pose-detection)
 - [Vanilla Web Components](https://developer.mozilla.org/en-US/docs/Web/API/Web_components)
+
+## License
+
+MIT
