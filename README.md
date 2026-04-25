@@ -2,6 +2,8 @@
 
 An interactive experimental webpage using TensorFlow.js Handpose model to detect hand gestures for on-page interactions.
 
+Mostly vibe coded using Gemini.
+
 ## Features
 
 - **Hand Tracking:** Real-time multi-hand detection using `@tensorflow-models/hand-pose-detection`.
